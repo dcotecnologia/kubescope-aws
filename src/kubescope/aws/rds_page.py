@@ -247,7 +247,11 @@ class RdsPage(QWidget):
         menu.addAction(self.tr("Logs"), partial(self.logs, instance))
         if self.ctx.app.write_mode:
             menu.addAction(self.tr("Forward with SSM"), partial(self.forward, instance))
-        menu.exec(table.viewport().mapToGlobal(position))
+        self._popup(menu, table.viewport().mapToGlobal(position))
+
+    @staticmethod
+    def _popup(menu: QMenu, where: QPoint) -> None:
+        menu.exec(where)
 
     def _double_clicked(self, row: int, _column: int) -> None:
         if self.instances is not None and 0 <= row < len(self.instances):

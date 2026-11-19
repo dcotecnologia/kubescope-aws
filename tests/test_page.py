@@ -370,3 +370,107 @@ def test_the_forward_dialog_says_when_no_instance_can_be_reached(
     open_dialog(page, monkeypatch, ctx, act)
 
     assert "denied" in seen["hint"]
+
+
+def test_a_context_that_changes_while_the_page_is_open_loads_the_new_one(
+    page, ctx
+) -> None:
+    page.show()
+    page.shown()
+    ctx.current_context = "other"
+
+    page._context_changed(context="other")
+
+    assert page.instances is not None  # it asked again at once, not on the next opening
+    assert ctx.aws.asked[-1][0] == "other"
+    page.close()
+
+
+def test_the_menu_of_an_instance_offers_the_forward_only_in_the_write_mode(
+    page, ctx, monkeypatch
+) -> None:
+    from PySide6.QtCore import QPoint
+
+    page.show()
+    page.shown()
+    offered: list[list[str]] = []
+    monkeypatch.setattr(
+        page,
+        "_popup",
+        lambda menu, where: offered.append([a.text() for a in menu.actions()]),
+    )
+    table = page.ui.instancesTable
+    point = QPoint(5, table.rowViewportPosition(0) + 5)
+
+    ctx.app.write_mode = False
+    page._menu(point)
+    ctx.app.write_mode = True
+    page._menu(point)
+    page._menu(QPoint(5, 10_000))  # below the rows: nothing
+
+    assert offered == [["Details", "Logs"], ["Details", "Logs", "Forward with SSM"]]
+    assert table.currentRow() == 0
+    page.instances = None
+    page._menu(point)  # nothing loaded: nothing
+    assert len(offered) == 2
+    page.close()
+
+
+def test_the_choice_of_a_log_without_the_window_does_nothing(page, ctx) -> None:
+    ctx.ui = None
+
+    page._choose_log(instance(), [])
+
+    assert ctx.aws.asked == []
+
+
+def test_the_forward_dialog_has_a_command_for_each_shell_on_windows(
+    page, ctx, monkeypatch
+) -> None:
+    from kubescope.aws import ssm
+
+    monkeypatch.setattr(ssm.sys, "platform", "win32")
+    ctx.aws.answers[("ssm", "describe-instance-information")] = {}
+    seen = {}
+
+    def act(dialog) -> None:
+        from PySide6.QtWidgets import QPlainTextEdit
+
+        seen["boxes"] = [
+            box.toPlainText() for box in dialog.findChildren(QPlainTextEdit)
+        ]
+        seen["copies"] = [b.text() for b in buttons(dialog).values()]
+
+    open_dialog(page, monkeypatch, ctx, act)
+
+    assert len(seen["boxes"]) == 2  # PowerShell and cmd
+    assert "aws ssm start-session" in seen["boxes"][0]
+    assert seen["copies"].count("Copy") == 1  # a button text is one key: one per name
+
+
+def test_what_was_typed_stays_when_the_instances_come(page) -> None:
+    from kubescope.sdk.models import SsmTarget
+    from PySide6.QtWidgets import QComboBox, QLabel
+
+    combo = QComboBox()
+    combo.setEditable(True)
+    combo.setEditText("i-0123456789abcdef0")
+    hint = QLabel()
+
+    page._fill_targets(combo, hint, [SsmTarget("i-aaa", "bastion", "vpc-1", True)])
+
+    assert combo.currentText() == "i-0123456789abcdef0"
+    assert combo.count() == 1 and "can be reached" in hint.text()
+
+
+def test_the_menu_is_shown_where_the_person_clicked(page) -> None:
+    from PySide6.QtCore import QPoint, QTimer
+    from PySide6.QtWidgets import QMenu
+
+    menu = QMenu()
+    menu.addAction("Details")
+    QTimer.singleShot(0, menu.close)  # nobody answers it: close it at once
+
+    page._popup(menu, QPoint(0, 0))
+
+    assert not menu.isVisible()
