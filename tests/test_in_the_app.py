@@ -16,6 +16,8 @@ def window(monkeypatch):
     from kubescope import window as window_module
 
     application = QApplication.instance() or QApplication([])
+    # the window downloads the extensions the app recommends on its first run
+    monkeypatch.setattr("kubescope.extensions.defaults.DEFAULTS", ())
     monkeypatch.setattr(window_module, "list_contexts", lambda: ([], None))
     monkeypatch.setattr(
         window_module.WorkloadWindow, "refresh_overview", lambda *_a: None
