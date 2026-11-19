@@ -1,0 +1,8 @@
+id = "kubescope.aws"
+name = "AWS"
+version = "1.0.0"
+api = "0"
+entry = "kubescope.aws:activate"
+description = "Look at your AWS account from KubeScope: the RDS databases of the account of the selected cluster, in any region, with their details and logs, and a port forward to a database through Systems Manager in the write mode."
+author = "DCO Tecnologia"
+permissions = ["aws.read", "forward", "ui.page", "ui.window"]
