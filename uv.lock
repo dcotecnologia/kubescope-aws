@@ -328,26 +328,24 @@ wheels = [
 
 [[package]]
 name = "kubescope"
-version = "1.12.0"
+version = "2.0.0"
 source = { editable = "../kubescope" }
 dependencies = [
     { name = "kubernetes" },
     { name = "kubescope-sdk" },
-    { name = "pyside6" },
     { name = "tzdata" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "kubernetes", specifier = ">=37.0.2" },
+    { name = "kubernetes", specifier = ">=37.0.3" },
     { name = "kubescope-sdk", git = "https://github.com/dcotecnologia/kubescope-sdk?branch=main" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.7.0" },
     { name = "pyinstaller", marker = "extra == 'build'", specifier = ">=6.22.3" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.414" },
-    { name = "pyside6", specifier = ">=6.12.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.2.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.17.5" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.17.6" },
     { name = "tzdata", specifier = ">=2026.6" },
 ]
 provides-extras = ["dev", "build"]
@@ -357,7 +355,7 @@ development = [{ name = "pre-commit", specifier = ">=4.7.0" }]
 
 [[package]]
 name = "kubescope-aws"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "kubescope-sdk" },
@@ -388,8 +386,8 @@ dev = [
 
 [[package]]
 name = "kubescope-sdk"
-version = "1.0.0"
-source = { git = "https://github.com/dcotecnologia/kubescope-sdk?branch=main#cbbd3bb9c5095237ac4f992651f1260c1c090fe6" }
+version = "1.1.0"
+source = { git = "https://github.com/dcotecnologia/kubescope-sdk?branch=main#78bb42e08b3302818b4d2b96495b8d085bad8039" }
 dependencies = [
     { name = "pyside6" },
 ]
