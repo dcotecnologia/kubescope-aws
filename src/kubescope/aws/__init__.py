@@ -1,4 +1,5 @@
-"""AWS for KubeScope: the RDS databases of the account of the selected cluster."""
+"""AWS for KubeScope: the RDS databases of the account of the selected
+cluster."""
 
 from kubescope.sdk import Context
 

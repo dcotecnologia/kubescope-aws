@@ -1,11 +1,12 @@
 """Keep the JSON languages in step with the texts of the code.
 
-`update` finds every text wrapped for translation (`tr(...)`, `translate(...)`
-and the `.ui` file) with `pyside6-lupdate`, then adds the new ones to every
-`languages/<code>.json` with an empty translation (untranslated) and drops the
-ones the code no longer uses. The translations already written are kept. The
-files have the same shape as the ones of the app, whose languages these join
-while the extension runs.
+`update` finds every text wrapped for translation (`tr(...)`,
+`translate(...)` and the `.ui` file) with `pyside6-lupdate`, then adds
+the new ones to every `languages/<code>.json` with an empty translation
+(untranslated) and drops the ones the code no longer uses. The
+translations already written are kept. The files have the same shape as
+the ones of the app, whose languages these join while the extension
+runs.
 """
 
 import argparse

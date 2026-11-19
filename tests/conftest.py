@@ -28,7 +28,8 @@ def light_theme():
 
 @pytest.fixture(autouse=True)
 def no_blocking_dialogs(monkeypatch):
-    """A modal dialog nobody can answer would hang the run; fail fast instead."""
+    """A modal dialog nobody can answer would hang the run; fail fast
+    instead."""
     from PySide6.QtWidgets import QDialog, QMenu, QMessageBox
 
     def refuse(*_args, **_kwargs):

@@ -42,6 +42,7 @@ make lint typecheck
 ```
 
 Run one test file at a time while you work; the pipeline runs them all.
+
 - `make i18n` keeps `languages/` in step with the texts of the code (a pipeline checks it).
 
 ## Releases

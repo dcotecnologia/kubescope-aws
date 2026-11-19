@@ -13,9 +13,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [1.0.1] - 2026-11-19
 
-### Changed
+### Fixed
 
-- The refresh button is the one of the header of the window, like the other pages, and the page no longer draws its own
+- The refresh button looked unlike the other pages: it is now the one of the header of the window, and the page no longer draws its own
 
 ## [1.0.0] - 2026-11-19
 

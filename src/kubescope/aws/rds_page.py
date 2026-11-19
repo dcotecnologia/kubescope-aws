@@ -324,7 +324,9 @@ class RdsPage(QWidget):
     def forward(self, instance: RdsInstance) -> None:
         """The AWS CLI command that forwards a local port to the database
         through an EC2 instance with Systems Manager, to copy or to run here.
-        The instance, the region and the profile come filled in."""
+
+        The instance, the region and the profile come filled in.
+        """
         ui = self.ctx.ui
         context = self.ctx.current_context or ""
         if ui is None:
@@ -455,8 +457,11 @@ class RdsPage(QWidget):
     def _command_views(self, dialog, layout, build, run):  # type: ignore[no-untyped-def]
         """Show the commands `build` returns as (shell, command) pairs: a box
         for each, named by its shell when there is more than one, with a Copy
-        button, and at the foot Run in KubeScope and Close. Returns the function
-        that shows them again after a choice changed."""
+        button, and at the foot Run in KubeScope and Close.
+
+        Returns the function that shows them again after a choice
+        changed.
+        """
         boxes = []
         copies = []
         for shell, _command in build():
