@@ -18,6 +18,7 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     # only the tests need the app: they run it in its window
+    "pre-commit>=4.7.0",
     "kubescope>=1.12.0",
     "pytest>=9.2.0",
     "pyright>=1.1.414",
