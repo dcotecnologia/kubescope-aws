@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "لا توجد نسخة في VPC قاعدة البيانات يصل إليها Systems Manager؛ اكتب معرّف إحداها.",
             "Profile:": "الملف الشخصي:",
             "REGION": "المنطقة",
-            "Refresh": "تحديث",
             "Region": "المنطقة",
             "Region:": "المنطقة:",
             "Regular expression": "تعبير نمطي",

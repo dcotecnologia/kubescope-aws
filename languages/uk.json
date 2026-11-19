@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Жоден екземпляр у VPC бази недоступний для Systems Manager; введіть ID одного.",
             "Profile:": "Профіль:",
             "REGION": "РЕГІОН",
-            "Refresh": "Оновити",
             "Region": "Регіон",
             "Region:": "Регіон:",
             "Regular expression": "Регулярний вираз",

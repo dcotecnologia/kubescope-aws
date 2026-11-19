@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "数据库所在 VPC 中没有 Systems Manager 可连接的实例；请输入一个实例的 ID。",
             "Profile:": "配置文件：",
             "REGION": "区域",
-            "Refresh": "刷新",
             "Region": "区域",
             "Region:": "区域：",
             "Regular expression": "正则表达式",

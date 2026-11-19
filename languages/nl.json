@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Geen instantie in de VPC van de database is bereikbaar voor Systems Manager; typ de ID van een.",
             "Profile:": "Profiel:",
             "REGION": "REGIO",
-            "Refresh": "Verversen",
             "Region": "Regio",
             "Region:": "Regio:",
             "Regular expression": "Reguliere expressie",

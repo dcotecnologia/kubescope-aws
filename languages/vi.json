@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Không instance nào trong VPC của cơ sở dữ liệu mà Systems Manager tới được; hãy nhập ID của một instance.",
             "Profile:": "Hồ sơ:",
             "REGION": "VÙNG",
-            "Refresh": "Làm mới",
             "Region": "Vùng",
             "Region:": "Vùng:",
             "Regular expression": "Biểu thức chính quy",

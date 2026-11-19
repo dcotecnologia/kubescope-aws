@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Nessuna istanza nella VPC del database è raggiungibile da Systems Manager; digita l'ID di una.",
             "Profile:": "Profilo:",
             "REGION": "REGIONE",
-            "Refresh": "Aggiorna",
             "Region": "Regione",
             "Region:": "Regione:",
             "Regular expression": "Espressione regolare",

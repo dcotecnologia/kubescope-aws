@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "資料庫所在 VPC 中沒有 Systems Manager 可連線的執行個體；請輸入一個執行個體的 ID。",
             "Profile:": "設定檔：",
             "REGION": "區域",
-            "Refresh": "重新整理",
             "Region": "區域",
             "Region:": "區域：",
             "Regular expression": "正規表示式",

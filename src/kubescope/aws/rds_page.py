@@ -63,17 +63,13 @@ class RdsPage(QWidget):
         self.loaded_context = ""
         self.case_button = _switch("Aa", self.tr("Match case"))
         self.regex_button = _switch(".*", self.tr("Regular expression"))
-        self.refresh_button = QPushButton(self.tr("Refresh"))
-        self.refresh_button.setProperty("variant", "secondary")
         header = self.ui.rdsHeaderRow
         after = header.indexOf(self.ui.searchInput) + 1
         for button in (self.regex_button, self.case_button):
             header.insertWidget(after, button)
-        header.addWidget(self.refresh_button)
         self.ui.searchInput.textChanged.connect(self.filter)
         self.case_button.toggled.connect(self.filter)
         self.regex_button.toggled.connect(self.filter)
-        self.refresh_button.clicked.connect(self.load)
         for code in ctx.aws.regions():
             self.ui.regionCombo.addItem(code, code)
         self.ui.regionCombo.currentIndexChanged.connect(self._region_changed)

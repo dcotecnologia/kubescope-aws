@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Tidak ada instans di VPC database yang dapat dijangkau Systems Manager; ketik ID salah satunya.",
             "Profile:": "Profil:",
             "REGION": "REGION",
-            "Refresh": "Segarkan",
             "Region": "Region",
             "Region:": "Region:",
             "Regular expression": "Ekspresi reguler",

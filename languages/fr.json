@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Aucune instance du VPC de la base n'est joignable par Systems Manager ; saisissez l'ID d'une.",
             "Profile:": "Profil :",
             "REGION": "RÉGION",
-            "Refresh": "Actualiser",
             "Region": "Région",
             "Region:": "Région :",
             "Regular expression": "Expression régulière",

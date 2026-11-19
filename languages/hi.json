@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "डेटाबेस के VPC में Systems Manager की पहुँच वाला कोई इंस्टेंस नहीं है; किसी एक की ID लिखें।",
             "Profile:": "प्रोफ़ाइल:",
             "REGION": "क्षेत्र",
-            "Refresh": "रीफ़्रेश",
             "Region": "क्षेत्र",
             "Region:": "क्षेत्र:",
             "Regular expression": "रेगुलर एक्सप्रेशन",

@@ -65,6 +65,9 @@ def test_the_extension_adds_one_page_to_the_aws_part_of_the_menu(ctx) -> None:
         "Instances",
     )
     assert isinstance(added["factory"](), RdsPage)
+    ctx.aws.answers[("rds", "describe-db-instances")] = {"DBInstances": [DATABASE]}
+    added["refresh"]()  # the refresh button of the header asks again
+    assert ctx.aws.asked[-1][1] == ["rds", "describe-db-instances"]
     assert added["visible"]() is True
     ctx.aws.using = False
     assert added["visible"]() is False

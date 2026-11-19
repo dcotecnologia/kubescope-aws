@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "Veritabanının VPC'sinde Systems Manager'ın ulaşabildiği örnek yok; birinin kimliğini yazın.",
             "Profile:": "Profil:",
             "REGION": "BÖLGE",
-            "Refresh": "Yenile",
             "Region": "Bölge",
             "Region:": "Bölge:",
             "Regular expression": "Düzenli ifade",

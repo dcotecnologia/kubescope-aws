@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "ไม่มีอินสแตนซ์ใน VPC ของฐานข้อมูลที่ Systems Manager เข้าถึงได้ พิมพ์ ID ของอินสแตนซ์",
             "Profile:": "โปรไฟล์:",
             "REGION": "ภูมิภาค",
-            "Refresh": "รีเฟรช",
             "Region": "ภูมิภาค",
             "Region:": "ภูมิภาค:",
             "Regular expression": "นิพจน์ปกติ",

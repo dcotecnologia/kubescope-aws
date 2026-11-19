@@ -151,7 +151,9 @@ class FakeCtx:
 
         self.app = App()
 
-    def add_page(self, section, group, title, factory, subtitle="", visible=None):
+    def add_page(
+        self, section, group, title, factory, subtitle="", visible=None, refresh=None
+    ):
         self.pages.append(
             {
                 "section": section,
@@ -160,6 +162,7 @@ class FakeCtx:
                 "factory": factory,
                 "subtitle": subtitle,
                 "visible": visible,
+                "refresh": refresh,
             }
         )
 

@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "אין מופע ב-VPC של מסד הנתונים ש-Systems Manager יכול להגיע אליו; הקלידו מזהה של אחד.",
             "Profile:": "פרופיל:",
             "REGION": "אזור",
-            "Refresh": "רענן",
             "Region": "אזור",
             "Region:": "אזור:",
             "Regular expression": "ביטוי רגולרי",

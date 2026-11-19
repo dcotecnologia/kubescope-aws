@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "هیچ نمونه‌ای در VPC پایگاه داده برای Systems Manager در دسترس نیست؛ شناسهٔ یکی را بنویسید.",
             "Profile:": "نمایه:",
             "REGION": "منطقه",
-            "Refresh": "تازه‌سازی",
             "Region": "منطقه",
             "Region:": "منطقه:",
             "Regular expression": "عبارت منظم",

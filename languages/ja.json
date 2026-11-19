@@ -31,7 +31,6 @@
             "No instance in the VPC of the database can be reached by Systems Manager; type the ID of one.": "データベースの VPC に Systems Manager が到達できるインスタンスがありません。ID を入力してください。",
             "Profile:": "プロファイル:",
             "REGION": "リージョン",
-            "Refresh": "更新",
             "Region": "リージョン",
             "Region:": "リージョン:",
             "Regular expression": "正規表現",
