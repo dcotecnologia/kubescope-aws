@@ -2,8 +2,13 @@
 
 [![CI](https://github.com/dcotecnologia/kubescope-aws/actions/workflows/ci.yml/badge.svg)](https://github.com/dcotecnologia/kubescope-aws/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdcotecnologia%2Fkubescope-aws%2Fbadges%2Fcoverage.json)](https://github.com/dcotecnologia/kubescope-aws/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dcotecnologia/kubescope-aws)](https://github.com/dcotecnologia/kubescope-aws/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python 3.15](https://img.shields.io/badge/python-3.15-blue.svg)
+[![Python 3.15](https://img.shields.io/badge/python-3.15-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
+[![Qt for Python](https://img.shields.io/badge/Qt-PySide6-41CD52.svg?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64.svg?logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
+[![KubeScope extension](https://img.shields.io/badge/KubeScope-extension-326CE5.svg?logo=kubernetes&logoColor=white)](https://github.com/dcotecnologia/kubescope)
+[![AWS](https://img.shields.io/badge/AWS-RDS-FF9900.svg?logo=amazonwebservices&logoColor=white)](https://aws.amazon.com/rds/)
 
 AWS for [KubeScope](https://github.com/dcotecnologia/kubescope): look at the **RDS** databases of the AWS
 account of the selected cluster, in any region, with their details and logs, and open a port forward to a
