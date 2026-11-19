@@ -1,5 +1,5 @@
 id = "kubescope.aws"
-name = "AWS"
+name = "AWS Resources"
 version = "1.0.0"
 api = "0"
 entry = "kubescope.aws:activate"
