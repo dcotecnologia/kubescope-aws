@@ -11,7 +11,7 @@ from kubescope.sdk import (
     WriteModeOff,
 )
 from kubescope.sdk.errors import ClusterError, first_line
-from kubescope.sdk.models import RdsInstance, RdsLogFile, SsmTarget
+from kubescope.sdk.models import RdsInstance, RdsLogFile, SsmTarget, natural_key
 from kubescope.sdk.timezone import to_zone
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QFontDatabase
@@ -60,6 +60,7 @@ class RdsPage(QWidget):
         self.ui = Ui_RdsPage()
         self.ui.setupUi(self)
         self.instances: list[RdsInstance] | None = None
+        self._sort: tuple[int, Qt.SortOrder] | None = None  # the header clicked
         self.loaded_context = ""
         self.case_button = _switch("Aa", self.tr("Match case"))
         self.regex_button = _switch(".*", self.tr("Regular expression"))
@@ -80,6 +81,9 @@ class RdsPage(QWidget):
         table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         table.customContextMenuRequested.connect(self._menu)
         table.cellDoubleClicked.connect(self._double_clicked)
+        header = table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._sort_by)
         for column, width in enumerate((300, 100, 80, 120, 100, 90, 90, 100, 150)):
             table.setColumnWidth(column, width)
         table.setItemDelegateForColumn(4, BadgeDelegate(table))
@@ -172,22 +176,50 @@ class RdsPage(QWidget):
             return
         self.instances = instances
         self.loaded_context = context
+        self._draw()
+
+    def _cells(self, item: RdsInstance) -> tuple[str, ...]:
+        return (
+            item.identifier,
+            item.engine,
+            item.version,
+            item.size,
+            item.status,
+            f"{item.storage} GiB",
+            self.tr("Yes") if item.multi_az else self.tr("No"),
+            item.region,
+            item.account,
+            item.endpoint,
+        )
+
+    def _sort_by(self, column: int) -> None:
+        """A click on a header: sort by that column, and again to reverse."""
+        if self._sort is not None and self._sort[0] == column:
+            flipped = self._sort[1] == Qt.SortOrder.AscendingOrder
+            order = (
+                Qt.SortOrder.DescendingOrder if flipped else Qt.SortOrder.AscendingOrder
+            )
+        else:
+            order = Qt.SortOrder.AscendingOrder
+        self._sort = (column, order)
+        header = self.ui.instancesTable.horizontalHeader()
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(column, order)
+        self._draw()
+
+    def _draw(self) -> None:
+        """The instances in the table, in the order of the header clicked."""
+        instances = self.instances or []
+        if self._sort is not None:
+            column, order = self._sort
+            instances.sort(
+                key=lambda one: natural_key(self._cells(one)[column]),
+                reverse=order == Qt.SortOrder.DescendingOrder,
+            )
         table = self.ui.instancesTable
         table.setRowCount(len(instances))
         for row, item in enumerate(instances):
-            cells = (
-                item.identifier,
-                item.engine,
-                item.version,
-                item.size,
-                item.status,
-                f"{item.storage} GiB",
-                self.tr("Yes") if item.multi_az else self.tr("No"),
-                item.region,
-                item.account,
-                item.endpoint,
-            )
-            for column, text in enumerate(cells):
+            for column, text in enumerate(self._cells(item)):
                 cell = QTableWidgetItem(text)
                 if column == 4:  # the status, as a badge
                     cell.setData(BADGE_ROLE, status_colors(text, self._themed))

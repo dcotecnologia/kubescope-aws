@@ -474,3 +474,20 @@ def test_the_menu_is_shown_where_the_person_clicked(page) -> None:
     page._popup(menu, QPoint(0, 0))
 
     assert not menu.isVisible()
+
+
+def test_a_click_on_a_header_sorts_the_instances_and_a_second_one_reverses_them(
+    page,
+) -> None:
+    page.shown()
+    assert rows(page) == ["billing", "orders"]
+
+    page._sort_by(0)
+    assert rows(page) == ["billing", "orders"]
+    assert page.ui.instancesTable.horizontalHeader().sortIndicatorSection() == 0
+
+    page._sort_by(0)
+    assert rows(page) == ["orders", "billing"]
+
+    page._sort_by(5)  # the storage, a number
+    assert page.ui.instancesTable.horizontalHeader().sortIndicatorOrder() is not None
