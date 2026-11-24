@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- A click on the header of the instances sorts them, and a second one reverses it, by what the cells mean (the storage as a number), as the lists of the app do; it needs the SDK 1.8 by @danilogco
+
 ## [1.0.2] - 2026-11-20
 
 ### Fixed
