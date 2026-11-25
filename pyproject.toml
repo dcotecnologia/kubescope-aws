@@ -1,6 +1,6 @@
 [project]
 name = "kubescope-aws"
-version = "1.1.0"
+version = "1.2.0"
 description = "AWS for KubeScope: the RDS databases of the account of the selected cluster"
 readme = "README.md"
 license = "MIT"
@@ -10,7 +10,7 @@ requires-python = ">=3.15,<3.16"
 # so): the app gives it what it needs when it runs it. Qt is what its page is
 # drawn with.
 dependencies = [
-    "kubescope-sdk>=1.10.0,<2.0.0",
+    "kubescope-sdk>=1.12.0,<2.0.0",
 ]
 
 [build-system]
@@ -21,7 +21,7 @@ build-backend = "setuptools.build_meta"
 dev = [
     # only the tests need the app: they run her in its window and lend her its
     # real services
-    "kubescope>=2.8.0",
+    "kubescope>=2.9.0",
     "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
@@ -51,12 +51,9 @@ show_missing = true
 skip_covered = true
 precision = 2
 
-[tool.coverage.run]
-omit = ["src/kubescope/aws/ui_*.py"]
-
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", "src/kubescope/aws/ui_rds_page.py"]
+exclude = ["**/__pycache__"]
 pythonVersion = "3.15"
 venvPath = "."
 venv = ".venv"
@@ -64,7 +61,6 @@ venv = ".venv"
 [tool.ruff]
 line-length = 88
 target-version = "py315"
-extend-exclude = ["src/kubescope/aws/ui_rds_page.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]

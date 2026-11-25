@@ -1,7 +1,8 @@
 """What the app calls to run the AWS extension: its page in the side menu."""
 
-from kubescope.sdk import Context
-from PySide6.QtCore import QCoreApplication
+from typing import Any
+
+from kubescope.sdk import Context, translate
 
 from kubescope.aws.rds_page import RdsPage
 
@@ -9,16 +10,16 @@ from kubescope.aws.rds_page import RdsPage
 def activate(ctx: Context) -> None:
     pages: list[RdsPage] = []  # the one the window built, once it is opened
 
-    def build() -> RdsPage:
+    def build() -> Any:
         pages[:] = [RdsPage(ctx)]
-        return pages[0]
+        return pages[0].widget
 
     ctx.add_page(
         "AWS",
         "RDS",
-        QCoreApplication.translate("AwsExtension", "Instances"),
+        translate("AwsExtension", "Instances"),
         build,
-        subtitle=QCoreApplication.translate(
+        subtitle=translate(
             "AwsExtension", "Databases of the AWS account of the selected context"
         ),
         visible=lambda: ctx.aws.uses_aws(ctx.current_context),

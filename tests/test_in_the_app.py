@@ -4,8 +4,8 @@ it."""
 import time
 
 import pytest
+from kubescope.extensions import testing
 from kubescope.extensions.context import ExtensionContext
-from PySide6.QtWidgets import QApplication, QPushButton
 
 from kubescope.aws import activate
 from tests.conftest import DATABASE
@@ -15,7 +15,7 @@ from tests.conftest import DATABASE
 def window(monkeypatch):
     from kubescope import window as window_module
 
-    application = QApplication.instance() or QApplication([])
+    application = testing.application()
     # the window downloads the extensions the app recommends on its first run
     monkeypatch.setattr("kubescope.extensions.defaults.DEFAULTS", ())
     monkeypatch.setattr(window_module, "list_contexts", lambda: ([], None))
@@ -31,10 +31,10 @@ def window(monkeypatch):
     shown.close()
 
 
-def entries(window) -> list[QPushButton]:
+def entries(window) -> list:
     return [
         one
-        for one in window.ui.sidebarNav.findChildren(QPushButton)
+        for one in testing.find_all(window.ui.sidebarNav, "button")
         if one.text() == "Instances"
     ]
 
@@ -64,12 +64,13 @@ def test_the_page_is_in_the_menu_and_lists_the_instances(window, monkeypatch) ->
     entry = entries(window)[-1]
     entry.click()
     deadline = time.monotonic() + 3
-    page = window.pages.currentWidget().layout().itemAt(0).widget()
-    while page.instances is None and time.monotonic() < deadline:
-        QApplication.processEvents()
+    widget = window.pages.currentWidget().layout().itemAt(0).widget()
+    table = testing.find(widget, "table")
+    while table.rowCount() == 0 and time.monotonic() < deadline:
+        testing.settle()
         time.sleep(0.005)
 
     assert window.ui.pageTitle.text() == "Instances"
-    assert page.instances is not None
-    assert [one.identifier for one in page.instances] == ["orders"]
+    assert table.rowCount() == 1
+    assert table.item(0, 0).text() == "orders"
     context.close()

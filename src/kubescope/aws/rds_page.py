@@ -2,38 +2,22 @@
 
 import datetime
 import re
+from collections.abc import Callable
 from functools import partial
 from typing import Any
 
 from kubescope.sdk import (
     CONTEXT_CHANGED,
+    Components,
     Context,
     WriteModeOff,
+    translate,
 )
 from kubescope.sdk.errors import ClusterError, first_line
 from kubescope.sdk.models import RdsInstance, RdsLogFile, SsmTarget, natural_key
 from kubescope.sdk.timezone import to_zone
-from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QFontDatabase
-from PySide6.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMenu,
-    QPlainTextEdit,
-    QPushButton,
-    QSpinBox,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
 
 from kubescope.aws import rds, ssm
-from kubescope.aws.badge import BADGE_ROLE, BadgeDelegate, status_colors
-from kubescope.aws.ui_rds_page import Ui_RdsPage
 
 
 def compile_query(query: str, match_case: bool, regex: bool) -> re.Pattern[str] | None:
@@ -44,52 +28,78 @@ def compile_query(query: str, match_case: bool, regex: bool) -> re.Pattern[str] 
     return re.compile(query if regex else re.escape(query), 0 if match_case else re.I)
 
 
-def _switch(text: str, tip: str) -> QPushButton:
-    button = QPushButton(text)
-    button.setCheckable(True)
-    button.setToolTip(tip)
-    button.setFixedSize(38, 32)
-    button.setProperty("variant", "secondary")
-    return button
-
-
-class RdsPage(QWidget):
+class RdsPage:
     def __init__(self, ctx: Context) -> None:
-        super().__init__()
         self.ctx = ctx
-        self.ui = Ui_RdsPage()
-        self.ui.setupUi(self)
+        components = self.components
+        self.widget = components.widget(shown=self.shown)
         self.instances: list[RdsInstance] | None = None
-        self._sort: tuple[int, Qt.SortOrder] | None = None  # the header clicked
+        self._sort: tuple[int, bool] | None = None  # the header clicked
         self.loaded_context = ""
-        self.case_button = _switch("Aa", self.tr("Match case"))
-        self.regex_button = _switch(".*", self.tr("Regular expression"))
-        header = self.ui.rdsHeaderRow
-        after = header.indexOf(self.ui.searchInput) + 1
-        for button in (self.regex_button, self.case_button):
-            header.insertWidget(after, button)
-        self.ui.searchInput.textChanged.connect(self.filter)
+        self.region = components.filter_select()
+        self.region.setToolTip(translate("RdsPage", "Region"))
+        self.search = components.search_box(
+            translate("RdsPage", "Search all columns...")
+        )
+        self.case_button = components.switch_button(
+            "Aa", translate("RdsPage", "Match case")
+        )
+        self.regex_button = components.switch_button(
+            ".*", translate("RdsPage", "Regular expression")
+        )
+        self.notice = components.label(variant="muted", wrap=True)
+        self.banner = components.error_banner(
+            translate("RdsPage", "Details"),
+            translate("RdsPage", "Hide"),
+            translate("RdsPage", "Dismiss"),
+        )
+        self.table = components.data_table(
+            [
+                translate("RdsPage", "NAME"),
+                translate("RdsPage", "ENGINE"),
+                translate("RdsPage", "VERSION"),
+                translate("RdsPage", "CLASS"),
+                translate("RdsPage", "STATUS"),
+                translate("RdsPage", "STORAGE"),
+                translate("RdsPage", "MULTI-AZ"),
+                translate("RdsPage", "REGION"),
+                translate("RdsPage", "ACCOUNT"),
+                translate("RdsPage", "ENDPOINT"),
+            ],
+            (300, 100, 80, 120, 100, 90, 90, 100, 150),
+        )
+        components.page(
+            self.widget,
+            filters=components.row(
+                self.region,
+                self.search,
+                self.case_button,
+                self.regex_button,
+                self.notice,
+                None,
+            ),
+            notice=self.banner.frame,
+            body=self.table,
+        )
+        self.search.textChanged.connect(self.filter)
         self.case_button.toggled.connect(self.filter)
         self.regex_button.toggled.connect(self.filter)
         for code in ctx.aws.regions():
-            self.ui.regionCombo.addItem(code, code)
-        self.ui.regionCombo.currentIndexChanged.connect(self._region_changed)
-        self.ui.dismissButton.clicked.connect(self.ui.rdsBanner.hide)
-        self.ui.detailsButton.clicked.connect(self._toggle_details)
-        self.ui.rdsBanner.hide()
-        table = self.ui.instancesTable
-        table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        table.customContextMenuRequested.connect(self._menu)
-        table.cellDoubleClicked.connect(self._double_clicked)
-        header = table.horizontalHeader()
-        header.setSectionsClickable(True)
-        header.sectionClicked.connect(self._sort_by)
-        for column, width in enumerate((300, 100, 80, 120, 100, 90, 90, 100, 150)):
-            table.setColumnWidth(column, width)
-        table.setItemDelegateForColumn(4, BadgeDelegate(table))
+            self.region.addItem(code, code)
+        self.region.currentIndexChanged.connect(self._region_changed)
+        components.on_context_menu(self.table, self._menu)
+        self.table.cellDoubleClicked.connect(self._double_clicked)
+        self.sorter = components.header_sorter(self.table, self._ordered)
         ctx.events.on(CONTEXT_CHANGED, self._context_changed)
 
     # what is shown
+
+    @property
+    def components(self) -> Components:
+        """The elements of the app; a page is only built in a window."""
+        ui = self.ctx.ui
+        assert ui is not None
+        return ui.components
 
     def shown(self) -> None:
         """The page was opened."""
@@ -101,13 +111,13 @@ class RdsPage(QWidget):
 
     def _context_changed(self, context: str | None = None, **_rest: Any) -> None:
         self.instances = None  # the instances are those of the context
-        if self.isVisible():
+        if self.widget.isVisible():
             self.shown()
 
     def _sync_region(self, context: str) -> None:
         """Choose in the region select the region of the context, which is
         where the instances are looked for until another is chosen."""
-        combo = self.ui.regionCombo
+        combo = self.region
         try:
             region = self.ctx.aws.scope(context).region if context else ""
         except ClusterError:
@@ -123,22 +133,18 @@ class RdsPage(QWidget):
         self.instances = None
         self.load()
 
-    def _themed(self, color: str) -> str:
-        ui = self.ctx.ui
-        return ui.themed(color) if ui is not None else color
-
     def load(self, _checked: bool = False) -> None:
         """Ask for the instances of the account of the selected context in the
         region chosen, off the UI thread."""
         ui = self.ctx.ui
         context = self.ctx.current_context or ""
-        region = self.ui.regionCombo.currentData() or ""
+        region = self.region.currentData() or ""
         if not context or ui is None:
-            self.ui.instancesTable.setRowCount(0)
-            self.ui.noticeLabel.setText(self.tr("Select a context."))
+            self.table.setRowCount(0)
+            self.notice.setText(translate("RdsPage", "Select a context."))
             return
-        self.ui.rdsBanner.hide()
-        self.ui.noticeLabel.setText(self.tr("Loading RDS instances..."))
+        self.banner.dismiss()
+        self.notice.setText(translate("RdsPage", "Loading RDS instances..."))
         ui.run_action(
             partial(rds.instances, self.ctx.aws),
             partial(self._loaded, context, region),
@@ -149,26 +155,21 @@ class RdsPage(QWidget):
 
     def _is_current(self, context: str, region: str) -> bool:
         return context == (self.ctx.current_context or "") and region == (
-            self.ui.regionCombo.currentData() or ""
+            self.region.currentData() or ""
         )
 
     def _failed(self, context: str, region: str, message: str) -> None:
         if not self._is_current(context, region):
             return  # the answer of a context or a region that is no longer chosen
-        self.ui.instancesTable.setRowCount(0)
-        self.ui.noticeLabel.setText("")
-        self.ui.bannerLabel.setText(first_line(message))
-        self.ui.bannerDetails.setText(message.strip())
-        self.ui.bannerDetails.hide()
-        self.ui.detailsButton.setText(self.tr("Details"))
-        self.ui.detailsButton.setVisible(message.strip() != first_line(message))
-        self.ui.rdsBanner.show()
-
-    def _toggle_details(self) -> None:
-        showing = not self.ui.bannerDetails.isHidden()
-        self.ui.bannerDetails.setVisible(not showing)
-        self.ui.detailsButton.setText(
-            self.tr("Details") if showing else self.tr("Hide")
+        self.table.setRowCount(0)
+        self.notice.setText("")
+        self.banner.show_error(
+            first_line(message),
+            message.strip(),
+            (
+                translate("RdsPage", "Details"),
+                translate("RdsPage", "Hide"),
+            ),
         )
 
     def _loaded(self, context: str, region: str, instances: list[RdsInstance]) -> None:
@@ -186,53 +187,44 @@ class RdsPage(QWidget):
             item.size,
             item.status,
             f"{item.storage} GiB",
-            self.tr("Yes") if item.multi_az else self.tr("No"),
+            translate("RdsPage", "Yes")
+            if item.multi_az
+            else translate("RdsPage", "No"),
             item.region,
             item.account,
             item.endpoint,
         )
 
-    def _sort_by(self, column: int) -> None:
-        """A click on a header: sort by that column, and again to reverse."""
-        if self._sort is not None and self._sort[0] == column:
-            flipped = self._sort[1] == Qt.SortOrder.AscendingOrder
-            order = (
-                Qt.SortOrder.DescendingOrder if flipped else Qt.SortOrder.AscendingOrder
-            )
-        else:
-            order = Qt.SortOrder.AscendingOrder
-        self._sort = (column, order)
-        header = self.ui.instancesTable.horizontalHeader()
-        header.setSortIndicatorShown(True)
-        header.setSortIndicator(column, order)
+    def _ordered(self, column: int, descending: bool) -> None:
+        """A click on a header: the instances in that order."""
+        self._sort = (column, descending)
         self._draw()
 
     def _draw(self) -> None:
         """The instances in the table, in the order of the header clicked."""
         instances = self.instances or []
         if self._sort is not None:
-            column, order = self._sort
+            column, descending = self._sort
             instances.sort(
                 key=lambda one: natural_key(self._cells(one)[column]),
-                reverse=order == Qt.SortOrder.DescendingOrder,
+                reverse=descending,
             )
-        table = self.ui.instancesTable
+        table = self.table
         table.setRowCount(len(instances))
         for row, item in enumerate(instances):
             for column, text in enumerate(self._cells(item)):
-                cell = QTableWidgetItem(text)
+                cell = self.components.table_item(text)
                 if column == 4:  # the status, as a badge
-                    cell.setData(BADGE_ROLE, status_colors(text, self._themed))
+                    self.components.set_badge(cell, text)
                 table.setItem(row, column, cell)
         self.filter()
 
     def filter(self, *_args: object) -> None:
         """Show the instances that have what the search looks for in some
         column, and count them."""
-        ui = self.ui
-        ui.searchInput.setToolTip("")
+        self.search.setToolTip("")
         pattern = None
-        text = ui.searchInput.text()
+        text = self.search.text()
         try:
             pattern = compile_query(
                 text if self.regex_button.isChecked() else text.strip(),
@@ -240,8 +232,8 @@ class RdsPage(QWidget):
                 self.regex_button.isChecked(),
             )
         except re.error as error:  # every row stays until it compiles
-            ui.searchInput.setToolTip(str(error))
-        table = ui.instancesTable
+            self.search.setToolTip(str(error))
+        table = self.table
         visible = 0
         for row in range(table.rowCount()):
             matches = pattern is None or any(
@@ -251,39 +243,41 @@ class RdsPage(QWidget):
             table.setRowHidden(row, not matches)
             visible += matches
         total = table.rowCount()
-        ui.noticeLabel.setText(
-            self.tr("{count} instances").format(count=total)
+        self.notice.setText(
+            translate("RdsPage", "{count} instances").format(count=total)
             if pattern is None
-            else self.tr("{visible} of {total} instances").format(
+            else translate("RdsPage", "{visible} of {total} instances").format(
                 visible=visible, total=total
             )
         )
 
     def _cell(self, row: int, column: int) -> str:
-        item = self.ui.instancesTable.item(row, column)
+        item = self.table.item(row, column)
         return item.text() if item is not None else ""
 
     # what is done with an instance
 
-    def _menu(self, position: QPoint) -> None:
+    def _menu(self, x: int, y: int) -> None:
         """Right-click on an instance: its details, its logs and, with the
         write mode on, a forward through AWS Systems Manager."""
-        table = self.ui.instancesTable
-        row = table.rowAt(position.y())
+        table = self.table
+        row = table.rowAt(y)
         if row < 0 or self.instances is None:
             return
         table.selectRow(row)
         instance = self.instances[row]
-        menu = QMenu(self)
-        menu.addAction(self.tr("Details"), partial(self.details, instance))
-        menu.addAction(self.tr("Logs"), partial(self.logs, instance))
+        menu = self.components.menu(self.widget)
+        menu.addAction(
+            translate("RdsPage", "Details"),
+            partial(self.details, instance),
+        )
+        menu.addAction(translate("RdsPage", "Logs"), partial(self.logs, instance))
         if self.ctx.app.write_mode:
-            menu.addAction(self.tr("Forward with SSM"), partial(self.forward, instance))
-        self._popup(menu, table.viewport().mapToGlobal(position))
-
-    @staticmethod
-    def _popup(menu: QMenu, where: QPoint) -> None:
-        menu.exec(where)
+            menu.addAction(
+                translate("RdsPage", "Forward with SSM"),
+                partial(self.forward, instance),
+            )
+        self.components.show_menu(menu, table, x, y)
 
     def _double_clicked(self, row: int, _column: int) -> None:
         if self.instances is not None and 0 <= row < len(self.instances):
@@ -329,8 +323,10 @@ class RdsPage(QWidget):
         if not files:
             ui.show_message(
                 "information",
-                self.tr("Logs"),
-                self.tr("{name} has no log files.").format(name=instance.identifier),
+                translate("RdsPage", "Logs"),
+                translate("RdsPage", "{name} has no log files.").format(
+                    name=instance.identifier
+                ),
             )
             return
         names = [
@@ -338,7 +334,9 @@ class RdsPage(QWidget):
             for item in files
         ]
         chosen, accepted = ui.pick_item(
-            self.tr("Logs"), self.tr("Select the log file:"), names
+            translate("RdsPage", "Logs"),
+            translate("RdsPage", "Select the log file:"),
+            names,
         )
         if accepted:
             self._open_log(instance, files[names.index(chosen)].name)
@@ -367,60 +365,64 @@ class RdsPage(QWidget):
         context = self.ctx.current_context or ""
         if ui is None:
             return
-        dialog = QDialog(ui.window)
-        dialog.setWindowTitle(self.tr("Forward with SSM"))
-        dialog.setMinimumWidth(560)
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(10)
-        intro = self.tr("Forward a local port to {name} through AWS Systems Manager.")
-        layout.addWidget(QLabel(intro.format(name=instance.identifier)))
-        layout.addWidget(QLabel(self.tr("EC2 instance that reaches the database:")))
-        target = QComboBox()
+        components = self.components
+        intro = translate(
+            "RdsPage", "Forward a local port to {name} through AWS Systems Manager."
+        )
+        body: list[Any] = [
+            components.label(intro.format(name=instance.identifier)),
+            components.label(
+                translate("RdsPage", "EC2 instance that reaches the database:")
+            ),
+        ]
+        target = components.filter_select()
         target.setEditable(True)
-        target.setProperty("variant", "filter")
         edit = target.lineEdit()
         if edit is not None:
             edit.setPlaceholderText("i-0123456789abcdef0")
-        layout.addWidget(target)
-        hint = QLabel(self.tr("Looking for an instance Systems Manager can reach..."))
-        hint.setProperty("variant", "muted")
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
-        row = QHBoxLayout()
-        region = QLineEdit(instance.region)
-        profile = QLineEdit(instance.profile)
-        profile.setPlaceholderText(self.tr("default"))
-        for label, field in (
-            (self.tr("Region:"), region),
-            (self.tr("Profile:"), profile),
-        ):
-            field.setProperty("variant", "filter")
-            column = QVBoxLayout()
-            column.addWidget(QLabel(label))
-            column.addWidget(field)
-            row.addLayout(column)
-        layout.addLayout(row)
-        layout.addWidget(QLabel(self.tr("Database port:")))
-        remote = QSpinBox()
-        remote.setProperty("variant", "filter")
-        remote.setRange(1, 65535)
-        remote.setValue(instance.port or 5432)
-        layout.addWidget(remote)
-        layout.addWidget(QLabel(self.tr("Local port:")))
-        local = QSpinBox()
-        local.setProperty("variant", "filter")
-        local.setRange(1, 65535)
-        local.setValue(min(remote.value() + 10000, 65535))  # clear of a local server
-        layout.addWidget(local)
-        text = QLabel(
-            self.tr(
-                "Run this in a terminal and keep it open while you use the port. "
-                "It needs the Session Manager plugin of the AWS CLI."
-            )
+        hint = components.label(
+            translate(
+                "RdsPage", "Looking for an instance Systems Manager can reach..."
+            ),
+            "muted",
+            wrap=True,
         )
-        text.setWordWrap(True)
-        layout.addWidget(text)
+        region = components.text_field()
+        region.setText(instance.region)
+        profile = components.text_field(translate("RdsPage", "default"))
+        profile.setText(instance.profile)
+        remote = components.number_field(1, 65535, instance.port or 5432)
+        local = components.number_field(  # clear of a local server
+            1, 65535, min(remote.value() + 10000, 65535)
+        )
+        body += [
+            target,
+            hint,
+            components.row(
+                components.column(
+                    components.label(translate("RdsPage", "Region:")),
+                    region,
+                    spacing=4,
+                ),
+                components.column(
+                    components.label(translate("RdsPage", "Profile:")),
+                    profile,
+                    spacing=4,
+                ),
+            ),
+            components.label(translate("RdsPage", "Database port:")),
+            remote,
+            components.label(translate("RdsPage", "Local port:")),
+            local,
+            components.label(
+                translate(
+                    "RdsPage",
+                    "Run this in a terminal and keep it open while you use the port. "
+                    "It needs the Session Manager plugin of the AWS CLI.",
+                ),
+                wrap=True,
+            ),
+        ]
 
         def chosen() -> str:
             typed = target.currentText().strip()
@@ -441,9 +443,10 @@ class RdsPage(QWidget):
             if not chosen().startswith(("i-", "mi-")):
                 ui.show_message(
                     "warning",
-                    self.tr("Forward with SSM"),
-                    self.tr(
-                        "Type the ID of the EC2 instance, such as i-0123456789abcdef0."
+                    translate("RdsPage", "Forward with SSM"),
+                    translate(
+                        "RdsPage",
+                        "Type the ID of the EC2 instance, such as i-0123456789abcdef0.",
                     ),
                 )
                 return
@@ -456,14 +459,16 @@ class RdsPage(QWidget):
                     f"{instance.endpoint}:{remote.value()}",
                 )
             except (WriteModeOff, ClusterError) as error:
-                ui.show_message("warning", self.tr("Forward with SSM"), str(error))
+                ui.show_message(
+                    "warning",
+                    translate("RdsPage", "Forward with SSM"),
+                    str(error),
+                )
                 return
             if started:
                 dialog.accept()
 
-        refresh = self._command_views(
-            dialog,
-            layout,
+        views, buttons, close, refresh = self._command_views(
             lambda: ssm.forward_commands(
                 chosen(),
                 instance.endpoint,
@@ -474,6 +479,15 @@ class RdsPage(QWidget):
             ),
             run_here,
         )
+        dialog = components.dialog(
+            ui.window,
+            translate("RdsPage", "Forward with SSM"),
+            components.column(*body, *views),
+            buttons,
+            width=560,
+        )
+        close.clicked.connect(dialog.accept)
+        refresh()
         target.editTextChanged.connect(refresh)
         region.textChanged.connect(refresh)
         profile.textChanged.connect(refresh)
@@ -490,30 +504,29 @@ class RdsPage(QWidget):
         )
         dialog.exec()
 
-    def _command_views(self, dialog, layout, build, run):  # type: ignore[no-untyped-def]
+    def _command_views(self, build, run):  # type: ignore[no-untyped-def]
         """Show the commands `build` returns as (shell, command) pairs: a box
         for each, named by its shell when there is more than one, with a Copy
         button, and at the foot Run in KubeScope and Close.
 
-        Returns the function that shows them again after a choice
-        changed.
+        Returns what goes in the body of the dialog, its buttons, the
+        Close button and the function that shows the commands again
+        after a choice changed.
         """
+        components = self.components
+        views: list[Any] = []
         boxes = []
         copies = []
         for shell, _command in build():
-            if shell:
-                layout.addWidget(QLabel(shell))
-            box = QPlainTextEdit()
-            box.setReadOnly(True)
-            box.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
-            box.setFixedHeight(96 if not shell else 64)
-            layout.addWidget(box)
-            copy = self._button(self.tr("Copy"))
-            copy.clicked.connect(
-                lambda _checked=False, box=box: QApplication.clipboard().setText(
-                    box.toPlainText()
-                )
+            box = components.command_box(height=96 if not shell else 64)
+            copy = self._button(
+                translate("RdsPage", "Copy"),
+                lambda box=box: self.components.copy_text(box.toPlainText()),
             )
+            if shell:  # a box for each shell: each has its Copy under it
+                views += [components.label(shell), box, components.row(None, copy)]
+            else:
+                views.append(box)
             copies.append(copy)
             boxes.append(box)
 
@@ -521,36 +534,18 @@ class RdsPage(QWidget):
             for box, (_shell, command) in zip(boxes, build(), strict=True):
                 box.setPlainText(command)
 
-        footer = QHBoxLayout()
-        footer.addStretch()
-        if len(copies) == 1:  # one command: its Copy joins the other buttons
-            footer.addWidget(copies[0])
-        else:  # a box for each shell: each has its Copy under it
-            for box, copy in zip(boxes, copies, strict=True):
-                line = QHBoxLayout()
-                line.addStretch()
-                line.addWidget(copy)
-                layout.insertLayout(layout.indexOf(box) + 1, line)
-        run_button = self._button(self.tr("Run in KubeScope"))
-        run_button.clicked.connect(run)
-        footer.addWidget(run_button)
-        close = self._button(self.tr("Close"))
-        close.clicked.connect(dialog.accept)
-        footer.addWidget(close)
-        layout.addLayout(footer)
-        refresh()
-        return refresh
+        run_button = self._button(translate("RdsPage", "Run in KubeScope"), run)
+        close = self._button(translate("RdsPage", "Close"))
+        # one command: its Copy joins the other buttons
+        buttons = [copies[0]] if len(copies) == 1 else []
+        return views, [*buttons, run_button, close], close, refresh
 
-    @staticmethod
-    def _button(text: str) -> QPushButton:
-        button = QPushButton(text)
-        button.setProperty("variant", "secondary")
+    def _button(self, text: str, on_click: Callable[[], None] | None = None) -> Any:
+        button = self.components.button(text, on_click=on_click)
         button.setMinimumWidth(120)
         return button
 
-    def _fill_targets(
-        self, combo: QComboBox, hint: QLabel, found: list[SsmTarget]
-    ) -> None:
+    def _fill_targets(self, combo: Any, hint: Any, found: list[SsmTarget]) -> None:
         """Offer the instances found, the best one first and already chosen
         unless something was typed meanwhile."""
         typed = combo.currentText().strip()
@@ -563,15 +558,17 @@ class RdsPage(QWidget):
             combo.setCurrentIndex(0)
         if any(one.same_vpc for one in found):
             hint.setText(
-                self.tr(
+                translate(
+                    "RdsPage",
                     "{count} instances can be reached; the first is in the VPC of "
-                    "the database."
+                    "the database.",
                 ).format(count=len(found))
             )
         else:
             hint.setText(
-                self.tr(
+                translate(
+                    "RdsPage",
                     "No instance in the VPC of the database can be reached by "
-                    "Systems Manager; type the ID of one."
+                    "Systems Manager; type the ID of one.",
                 )
             )

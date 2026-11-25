@@ -1,20 +1,17 @@
-import os
 import re
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 import pytest
+from kubescope.extensions import testing
+from kubescope.extensions.components import UiComponents
 from kubescope.sdk import CONTEXT_CHANGED, WriteModeOff
 from kubescope.sdk.errors import ClusterError
 from kubescope.sdk.models import RdsInstance
-from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QPushButton
 
 from kubescope.aws import extension
-from kubescope.aws.badge import BADGE_ROLE
 from kubescope.aws.rds_page import RdsPage, compile_query
 from tests.conftest import DATABASE
 
-application = QApplication.instance() or QApplication([])
+application = testing.application()
 
 
 @pytest.fixture
@@ -32,11 +29,11 @@ def page(ctx):
     }
     shown = RdsPage(ctx)
     yield shown
-    shown.deleteLater()
+    shown.widget.deleteLater()
 
 
 def rows(page: RdsPage) -> list[str]:
-    table = page.ui.instancesTable
+    table = page.table
     names = []
     for row in range(table.rowCount()):
         item = table.item(row, 0)
@@ -64,7 +61,7 @@ def test_the_extension_adds_one_page_to_the_aws_part_of_the_menu(ctx) -> None:
         "RDS",
         "Instances",
     )
-    assert isinstance(added["factory"](), RdsPage)
+    assert added["factory"]() is not None  # the widget of the page
     ctx.aws.answers[("rds", "describe-db-instances")] = {"DBInstances": [DATABASE]}
     added["refresh"]()  # the refresh button of the header asks again
     assert ctx.aws.asked[-1][1] == ["rds", "describe-db-instances"]
@@ -77,10 +74,11 @@ def test_the_instances_are_listed_when_the_page_is_opened(page) -> None:
     page.shown()
 
     assert rows(page) == ["billing", "orders"]
-    assert page.ui.noticeLabel.text() == "2 instances"
-    assert page.ui.regionCombo.currentData() == "us-east-1"
+    assert page.notice.text() == "2 instances"
+    assert page.region.currentData() == "us-east-1"
     assert page.ctx.aws.asked[-1][2] == "us-east-1"
-    assert page.ui.instancesTable.item(0, 4).data(BADGE_ROLE) is not None
+    status = page.table.item(0, 4)
+    assert testing.badge_of(status) is not None  # the badge
 
 
 def test_the_page_does_not_ask_again_for_the_same_context(page) -> None:
@@ -96,7 +94,7 @@ def test_another_context_asks_again_with_its_own_region(page, ctx) -> None:
     ctx.current_context = "other"
     page.shown()
 
-    assert page.ui.regionCombo.currentData() == "sa-east-1"
+    assert page.region.currentData() == "sa-east-1"
     assert len(ctx.aws.asked) == 2 and ctx.aws.asked[-1][2] == "sa-east-1"
 
 
@@ -105,7 +103,7 @@ def test_a_region_the_list_does_not_know_is_added(page, ctx) -> None:
 
     page.shown()
 
-    assert page.ui.regionCombo.currentData() == "mars-north-1"
+    assert page.region.currentData() == "mars-north-1"
 
 
 def test_a_context_that_is_not_eks_keeps_the_region_that_was_chosen(page, ctx) -> None:
@@ -116,13 +114,13 @@ def test_a_context_that_is_not_eks_keeps_the_region_that_was_chosen(page, ctx) -
 
     page.shown()
 
-    assert page.ui.regionCombo.currentData() == "us-east-1"
+    assert page.region.currentData() == "us-east-1"
 
 
 def test_choosing_another_region_asks_again(page) -> None:
     page.shown()
 
-    page.ui.regionCombo.setCurrentIndex(page.ui.regionCombo.findData("sa-east-1"))
+    page.region.setCurrentIndex(page.region.findData("sa-east-1"))
 
     assert page.ctx.aws.asked[-1][2] == "sa-east-1"
 
@@ -132,7 +130,7 @@ def test_without_a_context_it_says_so(page, ctx) -> None:
 
     page.shown()
 
-    assert page.ui.noticeLabel.text() == "Select a context."
+    assert page.notice.text() == "Select a context."
     assert ctx.aws.asked == []
 
 
@@ -154,45 +152,45 @@ def test_an_error_shows_in_the_banner_with_its_details(page, ctx) -> None:
 
     page.shown()
 
-    assert page.ui.rdsBanner.isHidden() is False
-    assert page.ui.bannerLabel.text() == "Access denied"
-    assert page.ui.instancesTable.rowCount() == 0
-    page.ui.detailsButton.click()
-    assert page.ui.bannerDetails.isHidden() is False
-    assert page.ui.detailsButton.text() == "Hide"
-    page.ui.detailsButton.click()
-    assert page.ui.bannerDetails.isHidden() is True
-    page.ui.dismissButton.click()
-    assert page.ui.rdsBanner.isHidden()
+    assert page.banner.frame.isHidden() is False
+    assert page.banner.label.text() == "Access denied"
+    assert page.table.rowCount() == 0
+    page.banner.details_button.click()
+    assert page.banner.details_label.isHidden() is False
+    assert page.banner.details_button.text() == "Hide"
+    page.banner.details_button.click()
+    assert page.banner.details_label.isHidden() is True
+    page.banner.dismiss_button.click()
+    assert page.banner.frame.isHidden()
 
 
 def test_the_answer_of_a_context_that_is_no_longer_chosen_is_dropped(page, ctx) -> None:
     page._failed("old", "us-east-1", "late")
     page._loaded("old", "us-east-1", [instance()])
 
-    assert page.instances is None and page.ui.rdsBanner.isHidden()
+    assert page.instances is None and page.banner.frame.isHidden()
 
 
 def test_the_search_looks_through_every_column(page) -> None:
     page.shown()
 
-    page.ui.searchInput.setText("mysql")
+    page.search.setText("mysql")
 
     assert rows(page) == ["billing"]
-    assert page.ui.noticeLabel.text() == "1 of 2 instances"
-    page.ui.searchInput.setText("")
+    assert page.notice.text() == "1 of 2 instances"
+    page.search.setText("")
     assert rows(page) == ["billing", "orders"]
 
 
 def test_the_search_can_match_the_case_and_be_a_regular_expression(page) -> None:
     page.shown()
-    page.ui.searchInput.setText("MYSQL")
+    page.search.setText("MYSQL")
     assert rows(page) == ["billing"]
     page.case_button.setChecked(True)
     assert rows(page) == []
     page.case_button.setChecked(False)
     page.regex_button.setChecked(True)
-    page.ui.searchInput.setText("^(orders|nothing)$")
+    page.search.setText("^(orders|nothing)$")
     assert rows(page) == ["orders"]
 
 
@@ -200,10 +198,10 @@ def test_a_regular_expression_that_does_not_compile_keeps_every_row(page) -> Non
     page.shown()
     page.regex_button.setChecked(True)
 
-    page.ui.searchInput.setText("(")
+    page.search.setText("(")
 
     assert rows(page) == ["billing", "orders"]
-    assert page.ui.searchInput.toolTip()
+    assert page.search.toolTip()
 
 
 def test_compile_query() -> None:
@@ -258,17 +256,17 @@ def test_without_the_window_the_page_does_nothing(page, ctx) -> None:
     page.shown()
 
     assert ctx.aws.asked == []
-    assert page.ui.noticeLabel.text() == "Select a context."
+    assert page.notice.text() == "Select a context."
 
 
 def open_dialog(page, monkeypatch, ctx, act):
     """Run the forward dialog with `act` in place of its exec."""
-    monkeypatch.setattr(QDialog, "exec", lambda dialog: act(dialog) or 0)
+    testing.answer_dialogs(monkeypatch, act)
     page.forward(instance())
 
 
-def buttons(dialog) -> dict[str, QPushButton]:
-    return {one.text(): one for one in dialog.findChildren(QPushButton)}
+def buttons(dialog) -> dict:
+    return testing.buttons(dialog)
 
 
 def test_the_forward_needs_the_id_of_an_instance(page, ctx, monkeypatch) -> None:
@@ -289,7 +287,7 @@ def test_the_forward_runs_with_the_ports_and_the_target_that_were_filled(
     ctx.aws.answers[("ssm", "describe-instance-information")] = {}
 
     def act(dialog) -> None:
-        dialog.findChild(QComboBox).setEditText("i-0123456789abcdef0")
+        testing.find(dialog, "combo").setEditText("i-0123456789abcdef0")
         buttons(dialog)["Run in KubeScope"].click()
 
     open_dialog(page, monkeypatch, ctx, act)
@@ -314,7 +312,7 @@ def test_a_forward_the_app_refuses_is_told_to_the_person(
     ctx.forwards.failure = WriteModeOff("turn on the write mode to start a forward")
 
     def act(dialog) -> None:
-        dialog.findChild(QComboBox).setEditText("i-0123456789abcdef0")
+        testing.find(dialog, "combo").setEditText("i-0123456789abcdef0")
         buttons(dialog)["Run in KubeScope"].click()
 
     open_dialog(page, monkeypatch, ctx, act)
@@ -346,7 +344,7 @@ def test_the_instances_systems_manager_can_reach_are_offered(
     seen = {}
 
     def act(dialog) -> None:
-        combo = dialog.findChild(QComboBox)
+        combo = testing.find(dialog, "combo")
         seen["items"] = [combo.itemText(i) for i in range(combo.count())]
         seen["chosen"] = combo.currentText()
 
@@ -363,9 +361,7 @@ def test_the_forward_dialog_says_when_no_instance_can_be_reached(
     seen = {}
 
     def act(dialog) -> None:
-        from PySide6.QtWidgets import QLabel
-
-        seen["hint"] = [one.text() for one in dialog.findChildren(QLabel)]
+        seen["hint"] = testing.texts(dialog)
 
     open_dialog(page, monkeypatch, ctx, act)
 
@@ -375,7 +371,7 @@ def test_the_forward_dialog_says_when_no_instance_can_be_reached(
 def test_a_context_that_changes_while_the_page_is_open_loads_the_new_one(
     page, ctx
 ) -> None:
-    page.show()
+    page.widget.show()
     page.shown()
     ctx.current_context = "other"
 
@@ -383,37 +379,35 @@ def test_a_context_that_changes_while_the_page_is_open_loads_the_new_one(
 
     assert page.instances is not None  # it asked again at once, not on the next opening
     assert ctx.aws.asked[-1][0] == "other"
-    page.close()
+    page.widget.close()
 
 
 def test_the_menu_of_an_instance_offers_the_forward_only_in_the_write_mode(
     page, ctx, monkeypatch
 ) -> None:
-    from PySide6.QtCore import QPoint
-
-    page.show()
+    page.widget.show()
     page.shown()
     offered: list[list[str]] = []
     monkeypatch.setattr(
-        page,
-        "_popup",
-        lambda menu, where: offered.append([a.text() for a in menu.actions()]),
+        page.components,
+        "show_menu",
+        lambda menu, _table, _x, _y: offered.append([a.text() for a in menu.actions()]),
     )
-    table = page.ui.instancesTable
-    point = QPoint(5, table.rowViewportPosition(0) + 5)
+    table = page.table
+    y = table.rowViewportPosition(0) + 5
 
     ctx.app.write_mode = False
-    page._menu(point)
+    page._menu(5, y)
     ctx.app.write_mode = True
-    page._menu(point)
-    page._menu(QPoint(5, 10_000))  # below the rows: nothing
+    page._menu(5, y)
+    page._menu(5, 10_000)  # below the rows: nothing
 
     assert offered == [["Details", "Logs"], ["Details", "Logs", "Forward with SSM"]]
     assert table.currentRow() == 0
     page.instances = None
-    page._menu(point)  # nothing loaded: nothing
+    page._menu(5, 5)  # nothing loaded: nothing
     assert len(offered) == 2
-    page.close()
+    page.widget.close()
 
 
 def test_the_choice_of_a_log_without_the_window_does_nothing(page, ctx) -> None:
@@ -434,11 +428,7 @@ def test_the_forward_dialog_has_a_command_for_each_shell_on_windows(
     seen = {}
 
     def act(dialog) -> None:
-        from PySide6.QtWidgets import QPlainTextEdit
-
-        seen["boxes"] = [
-            box.toPlainText() for box in dialog.findChildren(QPlainTextEdit)
-        ]
+        seen["boxes"] = testing.texts(dialog, "text")
         seen["copies"] = [b.text() for b in buttons(dialog).values()]
 
     open_dialog(page, monkeypatch, ctx, act)
@@ -450,30 +440,17 @@ def test_the_forward_dialog_has_a_command_for_each_shell_on_windows(
 
 def test_what_was_typed_stays_when_the_instances_come(page) -> None:
     from kubescope.sdk.models import SsmTarget
-    from PySide6.QtWidgets import QComboBox, QLabel
 
-    combo = QComboBox()
+    components = UiComponents()
+    combo = components.filter_select()
     combo.setEditable(True)
     combo.setEditText("i-0123456789abcdef0")
-    hint = QLabel()
+    hint = components.label()
 
     page._fill_targets(combo, hint, [SsmTarget("i-aaa", "bastion", "vpc-1", True)])
 
     assert combo.currentText() == "i-0123456789abcdef0"
     assert combo.count() == 1 and "can be reached" in hint.text()
-
-
-def test_the_menu_is_shown_where_the_person_clicked(page) -> None:
-    from PySide6.QtCore import QPoint, QTimer
-    from PySide6.QtWidgets import QMenu
-
-    menu = QMenu()
-    menu.addAction("Details")
-    QTimer.singleShot(0, menu.close)  # nobody answers it: close it at once
-
-    page._popup(menu, QPoint(0, 0))
-
-    assert not menu.isVisible()
 
 
 def test_a_click_on_a_header_sorts_the_instances_and_a_second_one_reverses_them(
@@ -482,12 +459,12 @@ def test_a_click_on_a_header_sorts_the_instances_and_a_second_one_reverses_them(
     page.shown()
     assert rows(page) == ["billing", "orders"]
 
-    page._sort_by(0)
+    page.sorter.clicked(0)
     assert rows(page) == ["billing", "orders"]
-    assert page.ui.instancesTable.horizontalHeader().sortIndicatorSection() == 0
+    assert page.table.horizontalHeader().sortIndicatorSection() == 0
 
-    page._sort_by(0)
+    page.sorter.clicked(0)
     assert rows(page) == ["orders", "billing"]
 
-    page._sort_by(5)  # the storage, a number
-    assert page.ui.instancesTable.horizontalHeader().sortIndicatorOrder() is not None
+    page.sorter.clicked(5)  # the storage, a number
+    assert page.table.horizontalHeader().sortIndicatorOrder() is not None

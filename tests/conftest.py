@@ -5,6 +5,10 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+
+# the tests run her in the app, so they take its real components
+from kubescope.extensions import testing
+from kubescope.extensions.components import UiComponents
 from kubescope.sdk import AwsScope
 
 
@@ -30,15 +34,7 @@ def light_theme():
 def no_blocking_dialogs(monkeypatch):
     """A modal dialog nobody can answer would hang the run; fail fast
     instead."""
-    from PySide6.QtWidgets import QDialog, QMenu, QMessageBox
-
-    def refuse(*_args, **_kwargs):
-        running = os.environ.get("PYTEST_CURRENT_TEST", "no test")
-        raise AssertionError(f"a test opened a real modal dialog ({running})")
-
-    monkeypatch.setattr(QDialog, "exec", refuse)
-    monkeypatch.setattr(QMessageBox, "exec", refuse)
-    monkeypatch.setattr(QMenu, "exec", refuse)
+    testing.refuse_modals(monkeypatch)
 
 
 class FakeAws:
@@ -73,6 +69,7 @@ class FakeUi:
 
     def __init__(self) -> None:
         self.window = None
+        self.components = UiComponents(lambda status: (status, "fill"))
         self.messages: list[tuple[str, str, str]] = []
         self.jsons: list[tuple[str, dict]] = []
         self.logs: list[tuple[str, str, str]] = []
