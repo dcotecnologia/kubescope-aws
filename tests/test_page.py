@@ -232,12 +232,14 @@ def test_the_logs_of_an_instance_are_picked_then_opened(page, ctx) -> None:
     page.logs(instance())
     assert ctx.ui.logs == []  # nothing picked
 
-    ctx.ui.picked = (ctx.ui.picks[0][0], True)
+    ctx.ui.picked_row = (0, True)
     page.logs(instance())
 
-    assert re.fullmatch(
-        r"error\.log  \(2 KiB, \d{4}-\d\d-\d\d \d\d:\d\d\)", ctx.ui.picks[0][0]
-    )
+    headers, rows, moments = ctx.ui.row_picks[0]
+    assert headers == ["File", "Size", "Written"]
+    assert rows[0][:2] == ["error.log", "2 KiB"]
+    assert re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", rows[0][2])
+    assert len(moments) == 1
     assert ctx.ui.logs == [("orders", "error.log", "boom")]
 
 

@@ -75,6 +75,8 @@ class FakeUi:
         self.logs: list[tuple[str, str, str]] = []
         self.picked: tuple[str, bool] = ("", False)
         self.picks: list[list[str]] = []
+        self.picked_row: tuple[int, bool] = (-1, False)
+        self.row_picks: list[tuple] = []
 
     def themed(self, color, text=False):
         return color
@@ -95,6 +97,10 @@ class FakeUi:
     def pick_item(self, title, label, items):
         self.picks.append(items)
         return self.picked
+
+    def pick_row(self, title, label, headers, rows, moments=None):
+        self.row_picks.append((headers, rows, moments))
+        return self.picked_row
 
     def show_json(self, title, document):
         self.jsons.append((title, document))

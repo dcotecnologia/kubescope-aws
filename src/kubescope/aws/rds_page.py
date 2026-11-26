@@ -310,11 +310,15 @@ class RdsPage:
         )
 
     @staticmethod
-    def _log_time(item: RdsLogFile) -> str:
+    def _log_moment(item: RdsLogFile) -> datetime.datetime:
         """When a log file was last written, in the time zone of the
         settings."""
         moment = datetime.datetime.fromtimestamp(item.written / 1000, datetime.UTC)
-        return to_zone(moment).strftime("%Y-%m-%d %H:%M")
+        return to_zone(moment)
+
+    @classmethod
+    def _log_time(cls, item: RdsLogFile) -> str:
+        return cls._log_moment(item).strftime("%Y-%m-%d %H:%M")
 
     def _choose_log(self, instance: RdsInstance, files: list[RdsLogFile]) -> None:
         ui = self.ctx.ui
@@ -329,17 +333,22 @@ class RdsPage:
                 ),
             )
             return
-        names = [
-            f"{item.name}  ({item.size // 1024} KiB, {self._log_time(item)})"
-            for item in files
-        ]
-        chosen, accepted = ui.pick_item(
+        index, accepted = ui.pick_row(
             translate("RdsPage", "Logs"),
             translate("RdsPage", "Select the log file:"),
-            names,
+            [
+                translate("RdsPage", "File"),
+                translate("RdsPage", "Size"),
+                translate("RdsPage", "Written"),
+            ],
+            [
+                [item.name, f"{item.size // 1024} KiB", self._log_time(item)]
+                for item in files
+            ],
+            [self._log_moment(item) for item in files],
         )
         if accepted:
-            self._open_log(instance, files[names.index(chosen)].name)
+            self._open_log(instance, files[index].name)
 
     def _open_log(self, instance: RdsInstance, name: str) -> None:
         ui = self.ctx.ui

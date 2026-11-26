@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-25
+
+### Changed
+
+- The manifest says the newest KubeScope the extension works with (`max_app`, 3.0.0), so a KubeScope newer than that neither installs nor offers it, and keeps the version made for it by @danilogco
+- The log files of an instance are picked in a table (file, size and when it was written) that narrows as you type and by a range of dates, instead of a select (needs KubeScope 2.10 and the SDK 1.13, with `Ui.pick_row`) by @danilogco
+
 ## [1.2.0] - 2026-11-25
 
 ### Changed
@@ -39,7 +46,8 @@ All notable changes to this project will be documented in this file. The format 
 
 - The RDS instances of the AWS account of the selected cluster, in any region, with search, details, logs and the port forward through Systems Manager, as an extension written against the KubeScope SDK only by @danilogco
 
-[Unreleased]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/dcotecnologia/kubescope-aws/compare/v1.0.1...v1.0.2
