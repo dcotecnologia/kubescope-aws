@@ -70,7 +70,7 @@ def test_the_page_is_in_the_menu_and_lists_the_instances(window, monkeypatch) ->
         testing.settle()
         time.sleep(0.005)
 
-    assert window.ui.pageTitle.text() == "Instances"
+    assert window.ui.pageTitle.text() == "RDS: Instances"
     assert table.rowCount() == 1
     assert table.item(0, 0).text() == "orders"
     context.close()
